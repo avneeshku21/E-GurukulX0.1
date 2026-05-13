@@ -13,8 +13,8 @@ RUN npm ci --prefix backend \
 COPY backend ./backend
 
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=8080
 
-EXPOSE 5000
+EXPOSE 8080
 
 CMD ["node", "backend/server/index.js"]
