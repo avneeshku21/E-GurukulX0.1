@@ -68,6 +68,9 @@ export default function VideoDiscoveryPage() {
   const [enrollVideo, setEnrollVideo]   = useState(null);
 
   const debouncedQ = useDebounce(searchQuery, 600);
+  const featuredQuery = discovery?.featuredCategory?.youtubeQuery?.trim() ?? '';
+  const hasActiveFilters = sortBy !== 'relevance' || duration !== 'any';
+  const isSearchMode = Boolean(debouncedQ || activeCategory || (hasActiveFilters && featuredQuery));
 
   // Initial load
   useEffect(() => {
@@ -80,14 +83,20 @@ export default function VideoDiscoveryPage() {
 
   // Search / category filter
   useEffect(() => {
-    if (!debouncedQ && !activeCategory) {
+    if (!isSearchMode) {
       setSearchRes(null);
       setNextPage(null);
       return;
     }
+
+    const fallbackQuery = !debouncedQ && !activeCategory ? featuredQuery : '';
+    if (!debouncedQ && !activeCategory && !fallbackQuery) {
+      return;
+    }
+
     setSearching(true);
     const params = { sortBy, duration };
-    if (debouncedQ) params.q = debouncedQ;
+    if (debouncedQ || fallbackQuery) params.q = debouncedQ || fallbackQuery;
     if (activeCategory) params.category = activeCategory;
     get('/videos/search', params)
       .then(d => {
@@ -96,13 +105,15 @@ export default function VideoDiscoveryPage() {
       })
       .catch(console.error)
       .finally(() => setSearching(false));
-  }, [debouncedQ, activeCategory, sortBy, duration]);
+  }, [activeCategory, debouncedQ, duration, featuredQuery, isSearchMode, sortBy]);
 
   const handleLoadMore = useCallback(() => {
     if (!nextPageToken) return;
     setLoadingMore(true);
     const params = { sortBy, duration, pageToken: nextPageToken };
-    if (debouncedQ) params.q = debouncedQ;
+    if (debouncedQ || (!activeCategory && featuredQuery)) {
+      params.q = debouncedQ || featuredQuery;
+    }
     if (activeCategory) params.category = activeCategory;
     get('/videos/search', params)
       .then(d => {
@@ -111,9 +122,7 @@ export default function VideoDiscoveryPage() {
       })
       .catch(console.error)
       .finally(() => setLoadingMore(false));
-  }, [nextPageToken, sortBy, duration, debouncedQ, activeCategory]);
-
-  const isSearchMode = !!(debouncedQ || activeCategory);
+  }, [activeCategory, debouncedQ, duration, featuredQuery, nextPageToken, sortBy]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -175,6 +184,9 @@ export default function VideoDiscoveryPage() {
             <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">
               {searching ? 'Searching…' : `${searchResults?.length ?? 0} results`}
               {debouncedQ && <span className="font-normal text-slate-500"> for "{debouncedQ}"</span>}
+              {!debouncedQ && hasActiveFilters && !activeCategory && discovery?.featuredCategory?.name && (
+                <span className="font-normal text-slate-500"> in {discovery.featuredCategory.name}</span>
+              )}
             </h2>
             <VideoGrid videos={searchResults} loading={searching} onEnroll={setEnrollVideo} />
             {nextPageToken && (
