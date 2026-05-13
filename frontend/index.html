@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <title>E-GurukulX – Learn with Discipline. Grow with Knowledge.</title>
+    <meta name="title"       content="E-GurukulX – Learn with Discipline. Grow with Knowledge." />
+    <meta name="description" content="A modern educational platform inspired by the Gurukul tradition, offering curated courses, progress tracking, notes, and certificates." />
+    <meta name="keywords"    content="e-gurukulx, gurukul learning platform, curated courses, progress tracking, study notes, certificates, indian education, self learning" />
+    <meta name="author"      content="E-GurukulX" />
+    <meta name="theme-color" content="#1E3A8A" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://egurukulx.app/" />
+    <meta property="og:title"       content="E-GurukulX – Learn with Discipline. Grow with Knowledge." />
+    <meta property="og:description" content="A modern educational platform inspired by the Gurukul tradition, offering curated courses, progress tracking, notes, and certificates." />
+    <meta property="og:image"       content="/og-image.png" />
+    <meta property="og:site_name"   content="E-GurukulX" />
+    <meta property="og:locale"      content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:url"         content="https://egurukulx.app/" />
+    <meta name="twitter:title"       content="E-GurukulX – Learn with Discipline. Grow with Knowledge." />
+    <meta name="twitter:description" content="A modern educational platform inspired by the Gurukul tradition, offering curated courses, progress tracking, notes, and certificates." />
+    <meta name="twitter:image"       content="/og-image.png" />
+
+    <!-- Favicon (graduation cap emoji as SVG data URI) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest"         href="/site.webmanifest" />
+
+    <!-- Google Fonts: Poppins + Inter + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Prevent flash of unstyled content for dark mode -->
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem('edutrack-theme');
+          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
+    <!-- Application mount point -->
+    <div id="root"></div>
+
+    <!-- React application entry -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
