@@ -47,6 +47,8 @@ const configuredOrigins = [
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'https://edu-ai-teal.vercel.app',
+  'https://edu-83h8n7xkw-avneeshku21s-projects.vercel.app',
   ...new Set(configuredOrigins),
 ];
 
