@@ -1,0 +1,232 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// EduTrack – Prisma Schema
+// Database: PostgreSQL (Supabase / Neon)
+// ─────────────────────────────────────────────────────────────────────────────
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum NoteType {
+  TEXT
+  CODE
+  QUIZ
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 1 — User
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id                  String    @id @default(uuid())
+  name                String
+  email               String    @unique
+  passwordHash        String?
+  avatarUrl           String?
+  bio                 String?
+  role                Role      @default(STUDENT)
+  emailVerified       Boolean   @default(false)
+  githubUrl           String?
+  linkedinUrl         String?
+  twitterUrl          String?
+  currentStreak       Int       @default(0)
+  longestStreak       Int       @default(0)
+  lastActiveDate      DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  isSuspended         Boolean   @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  categories   UserCategory[]
+  playlists    Playlist[]
+  notes        Note[]
+  certificates Certificate[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 2 — Category
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  slug         String   @unique
+  description  String
+  icon         String
+  color        String   // hex color for card gradient
+  youtubeQuery String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  users     UserCategory[]
+  playlists Playlist[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 3 — UserCategory (M:N explicit join table)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserCategory {
+  userId     String
+  categoryId String
+  assignedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId],     references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, categoryId])
+  @@index([userId])
+  @@index([categoryId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 4 — Playlist
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Playlist {
+  id                String   @id @default(uuid())
+  userId            String
+  name              String
+  categoryId        String?
+  totalVideos       Int      @default(0)
+  completedCount    Int      @default(0)
+  progressPercent   Float    @default(0)
+  certificateIssued Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user        User            @relation(fields: [userId],     references: [id], onDelete: Cascade)
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  videos      PlaylistVideo[]
+  notes       Note[]
+  certificate Certificate?
+
+  @@index([userId])
+  @@index([categoryId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 5 — PlaylistVideo
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PlaylistVideo {
+  id             String    @id @default(uuid())
+  playlistId     String
+  youtubeVideoId String
+  title          String
+  thumbnailUrl   String
+  channelTitle   String
+  durationSeconds Int      @default(0)
+  viewCount      BigInt    @default(0)
+  likeCount      BigInt    @default(0)
+  sortOrder      Int
+  isCompleted    Boolean   @default(false)
+  completedAt    DateTime?
+  watchedSeconds Int       @default(0)
+
+  // Relations
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  notes    Note[]
+
+  @@index([playlistId])
+  @@index([youtubeVideoId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 6 — Note
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Note {
+  id            String   @id @default(uuid())
+  userId        String
+  type          NoteType
+  title         String
+  content       String   // JSON-serialized TipTap / Monaco / Quiz content
+  language      String?  // for CODE notes (e.g. "javascript", "python")
+  linkedVideoId String?  // foreign key to PlaylistVideo.id
+  playlistId    String?
+  tags          String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user        User           @relation(fields: [userId],        references: [id], onDelete: Cascade)
+  playlist    Playlist?      @relation(fields: [playlistId],    references: [id], onDelete: SetNull)
+  linkedVideo PlaylistVideo? @relation(fields: [linkedVideoId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([playlistId])
+  @@index([linkedVideoId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 7 — Certificate
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Certificate {
+  id            String    @id @default(uuid())
+  userId        String
+  playlistId    String    @unique
+  certificateId String    @unique
+  issuedAt      DateTime  @default(now())
+  isRevoked     Boolean   @default(false)
+  revokedAt     DateTime?
+  templateUrl   String?
+
+  // Relations
+  user     User     @relation(fields: [userId],     references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, playlistId])
+  @@index([userId])
+  @@index([certificateId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Model 8 — VideoApiCache
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VideoApiCache {
+  id           String   @id @default(uuid())
+  cacheKey     String   @unique
+  responseJson String
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+}
