@@ -1,4 +1,5 @@
 # E-GurukulX — Learn with Discipline. Grow with Knowledge.
+Project Link- https://edu-ai-teal.vercel.app
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
@@ -91,7 +92,7 @@ E-GurukulX is a full-stack self-learning platform inspired by the Gurukul tradit
 2. Set Homepage URL to `http://localhost:3000`.
 3. Set Authorization callback URL to `http://localhost:3000/auth/github/callback`.
 4. Copy the values into `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
-
+Vercell Link- https://edu-ai-teal.vercel.app
 ## 💻 Local Development
 
 ```bash
