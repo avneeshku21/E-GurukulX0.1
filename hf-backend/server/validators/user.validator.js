@@ -5,6 +5,10 @@
 
 import { z } from 'zod';
 
+const objectIdSchema = z
+  .string()
+  .regex(/^[a-f\d]{24}$/i, 'Each category ID must be a valid MongoDB ObjectId.');
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Reusable password rule (shared between register + changePassword)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,7 +148,7 @@ export const changePasswordSchema = z
 export const categorySelectionSchema = z.object({
   categoryIds: z
     .array(
-      z.string().uuid('Each category ID must be a valid UUID.'),
+      objectIdSchema,
     )
     .min(1, 'Please select at least one category.')
     .max(8, 'You may select at most 8 categories.'),
