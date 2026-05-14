@@ -1,4 +1,5 @@
 # E-GurukulX — Learn with Discipline. Grow with Knowledge.
+Project Link- https://edu-ai-teal.vercel.app
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
