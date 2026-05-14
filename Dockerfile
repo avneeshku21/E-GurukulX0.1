@@ -1,19 +1,27 @@
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
-COPY backend/package*.json ./backend/
 COPY backend/server/package*.json ./backend/server/
-COPY backend/prisma ./backend/prisma
+COPY frontend/package*.json ./frontend/
 
-RUN npm ci --prefix backend \
-  && npm ci --omit=dev --prefix backend/server \
-  && npm --prefix backend run prisma:generate
+RUN npm ci --omit=dev --prefix backend/server \
+  && npm ci --prefix frontend
 
-COPY backend ./backend
+COPY backend/server ./backend/server
+COPY frontend ./frontend
+
+RUN npm --prefix frontend run build
+
+FROM node:22-bookworm-slim AS runtime
+
+WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=8080
+
+COPY --from=builder /app/backend/server ./backend/server
+COPY --from=builder /app/frontend/dist ./frontend/dist
 
 EXPOSE 8080
 
