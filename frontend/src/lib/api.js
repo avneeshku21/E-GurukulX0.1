@@ -6,11 +6,28 @@ import axios from 'axios';
 
 const AUTH_TOKEN_KEY = 'edutrack_token';
 const AUTH_USER_KEY  = 'edutrack_user';
+const PRODUCTION_API_FALLBACK = 'https://avneesh021-eduai.hf.space/api';
+
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, '');
+  }
+
+  if (import.meta.env.PROD) {
+    return PRODUCTION_API_FALLBACK;
+  }
+
+  return '/api';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 // ── Axios instance ────────────────────────────────────────────────────────────
 
 const instance = axios.create({
-  baseURL:         '/api',
+  baseURL:         API_BASE_URL,
   withCredentials: true,           // send httpOnly auth cookie on every request
   headers: {
     'Content-Type': 'application/json',
@@ -65,15 +82,15 @@ instance.interceptors.response.use(
 // ── Named helpers ─────────────────────────────────────────────────────────────
 
 /**
- * GET /api/{url}
- * @param {string} url  - path relative to /api
+ * GET {baseURL}/{url}
+ * @param {string} url  - path relative to configured API base URL
  * @param {object} params - query string params
  */
 export const get = (url, params) =>
   instance.get(url, { params });
 
 /**
- * POST /api/{url}
+ * POST {baseURL}/{url}
  * @param {string} url
  * @param {object} data - request body
  */
@@ -81,7 +98,7 @@ export const post = (url, data) =>
   instance.post(url, data);
 
 /**
- * PATCH /api/{url}
+ * PATCH {baseURL}/{url}
  * @param {string} url
  * @param {object} data - partial update body
  */
@@ -89,7 +106,7 @@ export const patch = (url, data) =>
   instance.patch(url, data);
 
 /**
- * DELETE /api/{url}
+ * DELETE {baseURL}/{url}
  * @param {string} url
  */
 export const del = (url) =>

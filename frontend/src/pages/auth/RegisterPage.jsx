@@ -11,7 +11,7 @@ import Button  from '../../components/ui/Button.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import toast   from '../../components/ui/Toast.jsx';
 import { cn }  from '../../lib/utils.js';
-import { post, patch, uploadFile } from '../../lib/api.js';
+import { get, patch, uploadFile } from '../../lib/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 // ─── Confetti ─────────────────────────────────────────────────────────────────
@@ -78,6 +78,29 @@ function getStrength(pwd) {
   return              { level: 'Very Strong', color: 'bg-emerald-500', width: '100%', textColor: 'text-emerald-600 dark:text-emerald-400' };
 }
 
+function isValidEmail(email) {
+  return /.+@.+\..+/.test(email);
+}
+
+function getPasswordError(password) {
+  if (password.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one digit.';
+  if (!/[!@#$%^&*]/.test(password)) return 'Password must contain at least one special character (!@#$%^&*).';
+  return '';
+}
+
+function mapFieldErrors(fieldErrors = {}) {
+  const mapped = {};
+
+  if (fieldErrors.name?.length) mapped.name = fieldErrors.name[0];
+  if (fieldErrors.email?.length) mapped.email = fieldErrors.email[0];
+  if (fieldErrors.password?.length) mapped.password = fieldErrors.password[0];
+  if (fieldErrors.confirmPassword?.length) mapped.confirm = fieldErrors.confirmPassword[0];
+
+  return mapped;
+}
+
 // ─── Stepper ──────────────────────────────────────────────────────────────────
 const STEP_LABELS = ['Account', 'Verify', 'Interests', 'Profile', 'Done'];
 
@@ -126,6 +149,7 @@ function Stepper({ current }) {
 
 // ─── Step 1: Account ─────────────────────────────────────────────────────────
 function StepAccount({ onNext }) {
+  const { register } = useAuth();
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -138,9 +162,12 @@ function StepAccount({ onNext }) {
 
   const validate = () => {
     const e = {};
-    if (!name.trim())              e.name     = 'Name is required.';
-    if (!email.includes('@'))      e.email    = 'Enter a valid email.';
-    if (password.length < 8)       e.password = 'Password must be at least 8 characters.';
+    if (name.trim().length < 2)    e.name     = 'Name must be at least 2 characters.';
+    if (!isValidEmail(email.trim())) e.email  = 'Enter a valid email.';
+
+    const passwordError = getPasswordError(password);
+    if (passwordError)             e.password = passwordError;
+    if (!confirm)                  e.confirm  = 'Please confirm your password.';
     if (password !== confirm)      e.confirm  = 'Passwords do not match.';
     if (!agreed)                   e.terms    = 'You must accept the terms.';
     return e;
@@ -153,20 +180,29 @@ function StepAccount({ onNext }) {
     setErrors({});
     setIsLoading(true);
     try {
-      const res = await post('/auth/register', {
+      const user = await register({
         name:            name.trim(),
         email:           email.trim().toLowerCase(),
         password,
         confirmPassword: confirm,
       });
-      const { token, user } = res.data?.data ?? res.data ?? {};
-      onNext({ name: name.trim(), email: email.trim().toLowerCase(), token, user });
+      onNext({
+        name: user?.name ?? name.trim(),
+        email: user?.email ?? email.trim().toLowerCase(),
+      });
     } catch (err) {
-      const msg = err?.response?.data?.message ?? 'Registration failed.';
-      if (msg.toLowerCase().includes('email')) {
-        setErrors({ email: msg });
+      const responseData = err?.response?.data;
+      const fieldErrors = responseData?.errors?.fieldErrors;
+      const mappedErrors = mapFieldErrors(fieldErrors);
+      const formError = responseData?.errors?.formErrors?.[0];
+      const message = responseData?.message ?? 'Registration failed.';
+
+      if (Object.keys(mappedErrors).length > 0) {
+        setErrors(mappedErrors);
+      } else if (message.toLowerCase().includes('email')) {
+        setErrors({ email: message });
       } else {
-        toast.error(msg);
+        toast.error(formError ?? message);
       }
     } finally {
       setIsLoading(false);
@@ -205,6 +241,7 @@ function StepAccount({ onNext }) {
           onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: '' })); }}
           placeholder="Min. 8 characters"
           error={errors.password}
+          helperText="At least 8 characters, one uppercase letter, one digit, and one special character."
           autoComplete="new-password"
           required
         />
@@ -313,20 +350,34 @@ function StepVerify({ email, onNext }) {
 }
 
 // ─── Step 3: Category selection ───────────────────────────────────────────────
-const DEFAULT_CATEGORIES = [
-  { id: 'web',       name: 'Web Development',  icon: '🌐', color: '#4F46E5' },
-  { id: 'ds',        name: 'Data Structures',   icon: '🌳', color: '#8B5CF6' },
-  { id: 'ml',        name: 'Machine Learning',  icon: '🤖', color: '#EC4899' },
-  { id: 'cloud',     name: 'Cloud & DevOps',    icon: '☁️', color: '#06B6D4' },
-  { id: 'db',        name: 'Databases',         icon: '🗄️', color: '#F59E0B' },
-  { id: 'security',  name: 'Cybersecurity',     icon: '🔐', color: '#EF4444' },
-  { id: 'mobile',    name: 'Mobile Dev',        icon: '📱', color: '#10B981' },
-  { id: 'sysdesign', name: 'System Design',     icon: '🏗️', color: '#6366F1' },
-];
-
-function StepCategories({ token, onNext }) {
+function StepCategories({ onNext }) {
+  const [categories, setCategories] = useState([]);
   const [selected, setSelected]   = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCategories() {
+      try {
+        const response = await get('/videos/categories');
+        if (!isMounted) return;
+        setCategories(response.data?.data ?? []);
+      } catch {
+        if (!isMounted) return;
+        toast.error('Unable to load learning categories right now. You can skip this step.');
+      } finally {
+        if (isMounted) setIsFetching(false);
+      }
+    }
+
+    loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggle = (id) => {
     setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
@@ -337,8 +388,8 @@ function StepCategories({ token, onNext }) {
     setIsLoading(true);
     try {
       await patch('/user/categories', { categoryIds: selected });
-    } catch {
-      // Non-critical
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Unable to save your interests right now.');
     } finally {
       setIsLoading(false);
       onNext({ categories: selected });
@@ -354,8 +405,13 @@ function StepCategories({ token, onNext }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {DEFAULT_CATEGORIES.map((cat) => {
+      {isFetching ? (
+        <div className="flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 py-10">
+          <Spinner className="h-5 w-5" />
+        </div>
+      ) : categories.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3">
+          {categories.map((cat) => {
           const active = selected.includes(cat.id);
           return (
             <button
@@ -369,7 +425,7 @@ function StepCategories({ token, onNext }) {
                   : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700',
               )}
             >
-              <span className="text-2xl">{cat.icon}</span>
+              <span className="text-2xl">{cat.icon ?? '📚'}</span>
               <span className={cn(
                 'text-sm font-medium leading-snug',
                 active ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300',
@@ -379,8 +435,13 @@ function StepCategories({ token, onNext }) {
               {active && <span className="ml-auto text-indigo-600 dark:text-indigo-400 text-xs">✓</span>}
             </button>
           );
-        })}
-      </div>
+          })}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+          Categories are unavailable right now. You can continue and update them later from your profile.
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Button
@@ -441,9 +502,9 @@ function StepProfile({ onNext }) {
       }
       if (bio || github || linkedin) {
         await patch('/user', {
-          bio:     bio.trim()     || undefined,
-          github:  github.trim()  || undefined,
-          linkedin: linkedin.trim() || undefined,
+          bio:         bio.trim() || undefined,
+          githubUrl:   github.trim() || undefined,
+          linkedinUrl: linkedin.trim() || undefined,
         });
       }
     } catch {
@@ -616,7 +677,7 @@ export default function RegisterPage() {
 
       {step === 1 && <StepAccount onNext={advance} />}
       {step === 2 && <StepVerify  email={userData.email} onNext={advance} />}
-      {step === 3 && <StepCategories token={userData.token} onNext={advance} />}
+      {step === 3 && <StepCategories onNext={advance} />}
       {step === 4 && <StepProfile onNext={advance} />}
       {step === 5 && <StepDone name={userData.name} onFinish={handleFinish} countdown={countdown} />}
     </div>

@@ -37,10 +37,17 @@ app.set('trust proxy', 1);
 // ─────────────────────────────────────────────────────────────────────────────
 
 // CORS — allow Vite dev server and production frontend
+const configuredOrigins = [
+  process.env.VITE_APP_URL,
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+]
+  .map((origin) => origin?.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+  ...new Set(configuredOrigins),
 ];
 
 function isAllowedDevOrigin(origin) {
