@@ -10,7 +10,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8080
-      ALLOWED_ORIGINS: http://localhost:3000
+      VITE_APP_URL: ${VITE_APP_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     expose:
       - "8080"
 
@@ -22,5 +23,24 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      DOMAIN: ${DOMAIN}
+      WWW_DOMAIN: ${WWW_DOMAIN}
+    volumes:
+      - ./data/certbot/www:/var/www/certbot
+      - ./data/certbot/conf:/etc/letsencrypt
     ports:
-      - "3000:80"
+      - "80:80"
+      - "443:443"
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: eduai-certbot
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    volumes:
+      - ./data/certbot/www:/var/www/certbot
+      - ./data/certbot/conf:/etc/letsencrypt
+    entrypoint: /bin/sh
+    command: -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done'
