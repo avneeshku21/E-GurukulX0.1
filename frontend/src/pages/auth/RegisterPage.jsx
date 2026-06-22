@@ -186,6 +186,8 @@ function StepAccount({ onNext }) {
         password,
         confirmPassword: confirm,
       });
+
+      toast.success('Account created successfully.');
       onNext({
         name: user?.name ?? name.trim(),
         email: user?.email ?? email.trim().toLowerCase(),

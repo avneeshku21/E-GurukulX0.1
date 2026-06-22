@@ -52,6 +52,8 @@ const allowedOrigins = [
   ...new Set(configuredOrigins),
 ];
 
+const allowAllOrigins = allowedOrigins.includes('*');
+
 function isAllowedDevOrigin(origin) {
   try {
     const parsed = new URL(origin);
@@ -67,6 +69,7 @@ app.use(
     origin(origin, callback) {
       // Allow requests with no origin (server-to-server, curl, Postman)
       if (!origin) return callback(null, true);
+      if (allowAllOrigins) return callback(null, true);
       if (allowedOrigins.includes(origin) || isAllowedDevOrigin(origin)) return callback(null, true);
       return callback(new Error(`CORS policy: origin "${origin}" not allowed`));
     },
