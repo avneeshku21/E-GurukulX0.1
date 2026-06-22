@@ -60,28 +60,67 @@ export default function ContestsDashboardWidget() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     setError('');
-    Promise.all([
-      get('/contests/stats'),
-      get('/contests/platforms'),
-      get('/contests', { status: 'live', limit: 6, sort: 'startTime', ...(platform ? { platform } : {}) }),
-      get('/contests', { status: 'upcoming', limit: 6, sort: 'startTime', ...(platform ? { platform } : {}) }),
-      get('/contests', { type: 'hackathon', limit: 6, sort: 'startTime', ...(platform ? { platform } : {}) }),
-    ])
-      .then(([statsRes, platformsRes, liveRes, upcomingRes, hackathonRes]) => {
-        setStats(statsRes.data?.data ?? null);
-        setPlatforms(platformsRes.data?.data?.platforms ?? []);
-        setSections({
-          live: liveRes.data?.data?.contests ?? [],
-          upcoming: upcomingRes.data?.data?.contests ?? [],
-          hackathons: hackathonRes.data?.data?.contests ?? [],
+    try {
+      const [statsResult, platformsResult, liveResult, upcomingResult, hackathonResult] = await Promise.allSettled([
+        get('/contests/stats'),
+        get('/contests/platforms'),
+        get('/contests', { status: 'live', limit: 6, sort: 'startTime', ...(platform ? { platform } : {}) }),
+        get('/contests', { status: 'upcoming', limit: 6, sort: 'startTime', ...(platform ? { platform } : {}) }),
+        get('/contests', { type: 'hackathon', limit: 6, sort: 'startTime', ...(platform ? { platform } : {}) }),
+      ]);
+
+      const liveContests = liveResult.status === 'fulfilled' ? liveResult.value.data?.data?.contests ?? [] : [];
+      const upcomingContests = upcomingResult.status === 'fulfilled' ? upcomingResult.value.data?.data?.contests ?? [] : [];
+      const hackathonContests = hackathonResult.status === 'fulfilled' ? hackathonResult.value.data?.data?.contests ?? [] : [];
+
+      setSections({
+        live: liveContests,
+        upcoming: upcomingContests,
+        hackathons: hackathonContests,
+      });
+
+      setStats(
+        statsResult.status === 'fulfilled'
+          ? statsResult.value.data?.data ?? null
+          : {
+              live: liveContests.length,
+              upcoming: upcomingContests.length,
+              hackathons: hackathonContests.length,
+            },
+      );
+
+      if (platformsResult.status === 'fulfilled') {
+        setPlatforms(platformsResult.value.data?.data?.platforms ?? []);
+      } else {
+        const platformMap = new Map();
+        [...liveContests, ...upcomingContests, ...hackathonContests].forEach((contest) => {
+          if (!contest?.platform) return;
+          if (!platformMap.has(contest.platform)) {
+            platformMap.set(contest.platform, {
+              platform: contest.platform,
+              label: contest.platformLabel ?? contest.platform,
+              logo: contest.platformLogo ?? '',
+            });
+          }
         });
-      })
-      .catch((err) => {
-        setError(err?.response?.data?.message ?? 'Failed to load contests.');
-      })
-      .finally(() => setLoading(false));
+        setPlatforms([...platformMap.values()]);
+      }
+
+      const contestRequestsFailed =
+        liveResult.status !== 'fulfilled' &&
+        upcomingResult.status !== 'fulfilled' &&
+        hackathonResult.status !== 'fulfilled';
+
+      if (contestRequestsFailed) {
+        setError('Failed to load contests.');
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message ?? 'Failed to load contests.');
+    } finally {
+      setLoading(false);
+    }
   }, [platform]);
 
   useEffect(() => {

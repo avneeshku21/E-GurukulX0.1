@@ -6,17 +6,17 @@ import axios from 'axios';
 
 const AUTH_TOKEN_KEY = 'edutrack_token';
 const AUTH_USER_KEY  = 'edutrack_user';
-const PRODUCTION_API_FALLBACK = 'https://avneesh021-eduai.hf.space/api';
+const PRODUCTION_API_FALLBACK = '/api';
 
 function resolveApiBaseUrl() {
+  if (import.meta.env.PROD) {
+    return PRODUCTION_API_FALLBACK;
+  }
+
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/$/, '');
-  }
-
-  if (import.meta.env.PROD) {
-    return PRODUCTION_API_FALLBACK;
   }
 
   return '/api';

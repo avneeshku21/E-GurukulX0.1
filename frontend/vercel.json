@@ -5,11 +5,15 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://avneesh021-eduai.hf.space/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
   "env": {
-    "VITE_API_BASE_URL": "https://avneesh021-eduai.hf.space/api"
+    "VITE_API_BASE_URL": "/api"
   }
 }

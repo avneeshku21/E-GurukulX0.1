@@ -54,6 +54,15 @@ const allowedOrigins = [
 
 const allowAllOrigins = allowedOrigins.includes('*');
 
+function isAllowedPreviewOrigin(origin) {
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === 'https:' && parsed.hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+}
+
 function isAllowedDevOrigin(origin) {
   try {
     const parsed = new URL(origin);
@@ -70,7 +79,7 @@ app.use(
       // Allow requests with no origin (server-to-server, curl, Postman)
       if (!origin) return callback(null, true);
       if (allowAllOrigins) return callback(null, true);
-      if (allowedOrigins.includes(origin) || isAllowedDevOrigin(origin)) return callback(null, true);
+      if (allowedOrigins.includes(origin) || isAllowedPreviewOrigin(origin) || isAllowedDevOrigin(origin)) return callback(null, true);
       return callback(new Error(`CORS policy: origin "${origin}" not allowed`));
     },
     credentials: true,
